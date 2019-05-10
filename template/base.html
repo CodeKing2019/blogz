@@ -1,0 +1,38 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>{{title}}</title>
+		<style>
+			.textbox {margin-bottom: 60px;}
+			h1 {text-align: center; margin-top: 60px; margin-bottom: 40px;}
+			a {margin: 5px 10px;}
+			form, nav {margin-left: 40px;}
+			.error {color:red;}
+		</style>
+	</head>
+		<header><nav><a href="/">Main Blog Page</a> <a href="/newpost">Add A Blog Entry</a>
+			<a href="/login">Log In</a> <a href="/logout">Log Out</a>
+		</nav></header>
+
+		<h1>{{title}}</h1>
+	<body>
+
+		
+			{% with messages = get_flashed_messages(with_catagories=True) %}
+				<ul>
+				{% for catagory, message in messages %}
+					<li class="{{category}}">{{message}}</li>
+				{% endfor %}
+				</ul>
+
+			{% endwith %}
+
+
+        	{% block content %}
+        	{% endblock %}
+
+
+	</body>
+</html>
+
+
