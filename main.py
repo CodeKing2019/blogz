@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template, flash
+from flask import Flask, request, redirect, render_template, flash, session
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__, template_folder="template")
@@ -12,27 +12,33 @@ app.secret_key = "Y82ono(of$i0f"
 class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
+    blog_user = db.Column(db.String(15), db.ForeignKey("user.username"))
     blog_title = db.Column(db.String(35), unique=True)
     blog_body = db.Column(db.String(2000))
 
-    def __init__(self, blog_title, blog_body):
+    def __init__(self, b_user, blog_title, blog_body):
+        self.b_user = b_user
         self.blog_title = blog_title
         self.blog_body = blog_body
 
-# class User(db.Model):
+class User(db.Model):
 
-#     id = db.Column(db.Integer, primary_key=True)
-#     username = db.Column(db.String(15), unique=True)
-#     password = db.Column(db.String(10))
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(15), unique=True)
+    password = db.Column(db.String(10))
+    blogs = db.relationship("Blog", backref = "b_user")
 
-    def __init__(self, email, password):
+    def __init__(self, username, password):
         self.username = username
         self.password = password
+     
 
-@app.route("/", methods = ["GET"])
-def blog():
-    blogz = Blog.query.all()
-    return render_template("view.html", title="Build-A-Blog", blogz=blogz)
+
+
+@app.route("/")
+def index():
+    users = User.query.all()
+    return render_template("index.html", title="Build-A-Blog", users=users)
 
 
 @app.route("/newpost", methods = ["GET", "POST"])
@@ -40,6 +46,8 @@ def newpost():
 
     title_error=""
     body_error=""
+    author = session["username"]
+    # author_id = User.query.get(author)
 
     if request.method =='POST':
         blog_title = request.form["blog_title"]
@@ -55,10 +63,10 @@ def newpost():
 
 
         if title_error == "" and body_error =="":
-            new_blog = Blog(blog_title, blog_body)
+            new_blog = Blog(author, blog_title, blog_body)
             db.session.add(new_blog)
             db.session.commit()
-            return render_template("postpage.html", blog=new_blog)
+            return render_template("postpage.html", blog=new_blog, author=author)
         else:
             return render_template("newpost.html", title_error=title_error, body_error=body_error)
     return render_template("newpost.html", title="Build-A-Blog")
@@ -66,13 +74,12 @@ def newpost():
 
 @app.before_request
 def require_login():
-    if "username" not  in session:
-        allowed_routes = ["login", "register"]
-        if request.endpoint no in allowed_routes and "username" not in session:
-    return redirect("/login")
+    blocked_routes = ["newpost"]
+    if request.endpoint in blocked_routes and "username" not in session:
+        return redirect("/login")
 
 
-@app.route("/login" methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form["username"]
@@ -87,7 +94,7 @@ def login():
     return render_template("login.html")
 
 
-@app.route("/signup" methods=["GET", "POST"])
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
         username = request.form["username"]
@@ -99,7 +106,7 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
             session["username"] = username
-            return redirect("/")
+            return redirect("/newpost")
         else:
             return "<h1>This user already exists.</h1>"
     return render_template("signup.html")
@@ -111,22 +118,28 @@ def logout():
 
 @app.route("/singleuser")
 def singleuser():
-    return render_template("singleuser.html")
+    identity = int(request.args.get("id"))
+    users = User.query.get(identity)
+    blogz = Blog.query.filter_by(blog_user=users.username).all()
+    return render_template("singleuser.html", users=users, blogz=blogz)
 
 @app.route("/view")
 def view():
     return render_template("view.html")
 
-@app.route("/index")
-def index():
-    return render_template("index.html")
 
+
+# @app.route("/", methods = ["GET"])
+# def blog():
+#     blogz = Blog.query.all()
+#     return render_template("view.html", title="Build-A-Blog", blogz=blogz)
 
 @app.route("/postpage")
 def postpage():
     identity = int(request.args.get("id"))
     bl = Blog.query.get(identity)
-    return render_template("postpage.html", blog=bl)
+    username = User.query.get(bl.blog_user)
+    return render_template("postpage.html", blog=bl, username=username)
 
 if __name__ == "__main__":
     app.run()
