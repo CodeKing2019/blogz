@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__, template_folder="template")
 app.config['DEBUG'] = True
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://blogz:money@localhost:8889/blogz'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://blogz:money@localhost:3306/blogz'
 app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
 app.secret_key = "Y82ono(of$i0f"
@@ -38,15 +38,14 @@ class User(db.Model):
 @app.route("/")
 def index():
     users = User.query.all()
-    return render_template("index.html", title="Build-A-Blog", users=users)
+    return render_template("index.html", title="Blogz", users=users)
 
 
 @app.route("/newpost", methods = ["GET", "POST"])
 def newpost():
-
     title_error=""
     body_error=""
-    author = session["username"]
+    author = User.query.filter_by(username = session['username']).first()
     # author_id = User.query.get(author)
 
     if request.method =='POST':
@@ -69,7 +68,7 @@ def newpost():
             return render_template("postpage.html", blog=new_blog, author=author)
         else:
             return render_template("newpost.html", title_error=title_error, body_error=body_error)
-    return render_template("newpost.html", title="Build-A-Blog")
+    return render_template("newpost.html", title="Blogz")
 
 
 @app.before_request
@@ -111,6 +110,8 @@ def signup():
             return "<h1>This user already exists.</h1>"
     return render_template("signup.html")
 
+
+
 @app.route("/logout")
 def logout():
     del session["username"]
@@ -119,9 +120,9 @@ def logout():
 @app.route("/singleuser")
 def singleuser():
     identity = int(request.args.get("id"))
-    users = User.query.get(identity)
-    blogz = Blog.query.filter_by(blog_user=users.username).all()
-    return render_template("singleuser.html", users=users, blogz=blogz)
+    user = User.query.get(identity)
+    blogz = Blog.query.filter_by(blog_user=user.username).all()
+    return render_template("singleuser.html", user=user, blogz=blogz)
 
 @app.route("/view")
 def view():
@@ -138,8 +139,8 @@ def view():
 def postpage():
     identity = int(request.args.get("id"))
     bl = Blog.query.get(identity)
-    username = User.query.get(bl.blog_user)
-    return render_template("postpage.html", blog=bl, username=username)
+    author = bl.b_user
+    return render_template("postpage.html", blog=bl, author=author)
 
 if __name__ == "__main__":
     app.run()
